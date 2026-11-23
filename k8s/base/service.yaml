@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: dacworks
+spec:
+  type: LoadBalancer
+  selector:
+    app: dacworks
+  ports:
+  - port: 80
+    targetPort: 80

@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dacworks
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dacworks
+  template:
+    metadata:
+      labels:
+        app: dacworks
+    spec:
+      containers:
+      - name: dacworks
+        image: dacworksacr01.azurecr.io/dacworks:1
+        ports:
+        - containerPort: 80
