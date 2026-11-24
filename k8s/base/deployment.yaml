@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: dacworks
-        image: dacworksacr01.azurecr.io/dacworks:1
+        image: dacworksacr01.azurecr.io/dacworks:2
         ports:
         - containerPort: 80
         volumeMounts:
