@@ -1,0 +1,54 @@
+name: DAC Works CI
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'k8s/overlays/**'
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run unit tests
+        run: node tests/index.test.js
+
+      - name: Parse ACR credentials
+        id: acr
+        env:
+          ACR_JSON: ${{ secrets.DACWORKS_ACR }}
+        run: |
+          echo "login_server=$(echo "$ACR_JSON" | jq -r .loginServer)" >> $GITHUB_OUTPUT
+          echo "username=$(echo "$ACR_JSON" | jq -r .username)" >> $GITHUB_OUTPUT
+          echo "::add-mask::$(echo "$ACR_JSON" | jq -r .password)"
+          echo "password=$(echo "$ACR_JSON" | jq -r .password)" >> $GITHUB_OUTPUT
+
+      - name: Log in to ACR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ steps.acr.outputs.login_server }}
+          username: ${{ steps.acr.outputs.username }}
+          password: ${{ steps.acr.outputs.password }}
+
+      - name: Build and push image
+        run: |
+          TAG=${{ github.run_number }}
+          IMAGE=${{ steps.acr.outputs.login_server }}/dacworks:$TAG
+          docker build -t $IMAGE .
+          docker push $IMAGE
+          echo "NEW_TAG=$TAG" >> $GITHUB_ENV
+
+      - name: Update image tag in Kustomize overlay
+        run: |
+          sed -i "s|dacworks:[0-9]*|dacworks:${NEW_TAG}|" k8s/base/deployment.yaml
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add k8s/base/deployment.yaml
+          git commit -m "Deploy dacworks:${NEW_TAG} [skip ci]"
+          git push
